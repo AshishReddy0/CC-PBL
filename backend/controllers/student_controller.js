@@ -35,21 +35,34 @@ const studentRegister = async (req, res) => {
 
 const studentLogIn = async (req, res) => {
     try {
-        let student = await Student.findOne({ rollNum: req.body.rollNum, name: req.body.studentName });
-        if (student) {
-            const validated = await bcrypt.compare(req.body.password, student.password);
-            if (validated) {
-                student = await student.populate("school", "schoolName")
-                student = await student.populate("sclassName", "sclassName")
+        if (req.body.rollNum && req.body.password) {
+            let query = { rollNum: req.body.rollNum };
+            if (req.body.studentName) {
+                query.name = req.body.studentName;
+            }
+            let students = await Student.find(query);
+            let student = null;
+
+            for (const s of students) {
+                const validated = await bcrypt.compare(req.body.password, s.password);
+                if (validated) {
+                    student = s;
+                    break;
+                }
+            }
+
+            if (student) {
+                student = await student.populate("school", "schoolName");
+                student = await student.populate("sclassName", "sclassName");
                 student.password = undefined;
                 student.examResult = undefined;
                 student.attendance = undefined;
                 res.send(student);
             } else {
-                res.send({ message: "Invalid password" });
+                res.send({ message: "Invalid roll number or password" });
             }
         } else {
-            res.send({ message: "Student not found" });
+            res.send({ message: "Roll number and password are required" });
         }
     } catch (err) {
         res.status(500).json(err);
